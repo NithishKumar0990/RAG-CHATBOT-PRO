@@ -18,10 +18,11 @@
     isStreaming: false,
     isUploading: false,
     mode: 'Chat', // 'Chat' or 'Analyze'
-    activeTab: 'tabOverview',
+    activeTab: 'tabAudit',
     userScrolledUp: false,
     analysisCache: {},
-    streamAbortController: null
+    streamAbortController: null,
+    profile: null
   };
   window.state = state;
 
@@ -46,6 +47,10 @@
   const btnMobileMenu = document.getElementById('btnMobileMenu');
   const sidebar = document.getElementById('sidebar');
   const toastContainer = document.getElementById('toastContainer');
+  const profileChipContainer = document.getElementById('profileChipContainer');
+  const profileChipBtn = document.getElementById('profileChipBtn');
+  const profileChipText = document.getElementById('profileChipText');
+  const profilePopover = document.getElementById('profilePopover');
 
   // ====================================================================
   // Utility: HTML Escaping & Markdown Renderer (Escape-First, Safe)
@@ -179,6 +184,7 @@
       const data = await res.json();
       state.indexed_docs = data.indexed_docs || [];
       state.active_doc = data.active_doc || null;
+      state.profile = data.profile || null;
       state.chats = data.chats || [];
       state.activeChatId = data.active_chat_id || (data.chats && data.chats[0] ? data.chats[0].id : null);
       state.messages = data.messages || [];
@@ -208,7 +214,7 @@
     if (!chatsList) return;
     chatsList.innerHTML = '';
     if (!state.chats || state.chats.length === 0) {
-      chatsList.innerHTML = '<div style="padding:8px 6px; font-size:12px; color:var(--text-muted); font-style:italic;">No chats yet</div>';
+      chatsList.innerHTML = '<div class="sidebar-empty"><span class="sidebar-empty-icon">💬</span><span>No chats yet</span></div>';
       return;
     }
 
@@ -323,7 +329,7 @@
   function renderRecentDocs() {
     recentList.innerHTML = '';
     if (!state.indexed_docs || state.indexed_docs.length === 0) {
-      recentList.innerHTML = '<div style="padding:10px 6px; font-size:12px; color:var(--text-muted); font-style:italic;">No documents yet</div>';
+      recentList.innerHTML = '<div class="sidebar-empty"><span class="sidebar-empty-icon">📄</span><span>No documents yet</span></div>';
       return;
     }
 
@@ -332,9 +338,29 @@
       item.className = 'recent-item' + (doc.filename === state.active_doc ? ' active' : '');
       item.setAttribute('data-filename', doc.filename);
 
+      const infoCol = document.createElement('div');
+      infoCol.style.display = 'flex';
+      infoCol.style.flexDirection = 'column';
+      infoCol.style.overflow = 'hidden';
+
       const nameSpan = document.createElement('span');
       nameSpan.className = 'recent-name';
       nameSpan.textContent = doc.filename;
+      infoCol.appendChild(nameSpan);
+
+      if (doc.profile) {
+        const numNumeric = doc.profile.columns ? doc.profile.columns.filter(c => c.dtype === 'numeric').length : Object.keys(doc.profile.numeric_summary || {}).length;
+        const chipBtn = document.createElement('button');
+        chipBtn.className = 'recent-profile-chip';
+        chipBtn.textContent = `📊 ${doc.profile.row_count} rows • ${doc.profile.col_count} cols • ${numNumeric} numeric`;
+        chipBtn.title = 'View dataset schema and stats';
+        chipBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          activateDocument(doc.filename);
+          toggleProfilePopover(doc.profile, doc.filename);
+        });
+        infoCol.appendChild(chipBtn);
+      }
 
       const delBtn = document.createElement('button');
       delBtn.className = 'btn-del-doc';
@@ -347,7 +373,7 @@
         deleteDocument(doc.filename);
       });
 
-      item.appendChild(nameSpan);
+      item.appendChild(infoCol);
       item.appendChild(delBtn);
 
       item.addEventListener('click', () => {
@@ -358,15 +384,96 @@
     });
   }
 
+  function toggleProfilePopover(prof, fname) {
+    if (!profilePopover) return;
+    if (profilePopover.style.display === 'block') {
+      profilePopover.style.display = 'none';
+      return;
+    }
+    const profile = prof || state.profile;
+    const filename = fname || state.active_doc;
+    if (!profile || !profile.columns) return;
+
+    let html = `
+      <div class="profile-popover-header">
+        <span class="profile-popover-title">📊 ${escapeHTML(filename || 'Dataset Profile')}</span>
+        <button class="profile-popover-close" id="btnCloseProfilePopover" aria-label="Close">✕</button>
+      </div>
+      <table class="profile-popover-table">
+        <thead>
+          <tr>
+            <th>Column</th>
+            <th>Type</th>
+            <th>Null %</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    profile.columns.forEach(col => {
+      html += `
+        <tr>
+          <td class="col-name">${escapeHTML(col.name)}</td>
+          <td class="col-type">${escapeHTML(col.dtype)}</td>
+          <td>${col.null_pct}%</td>
+        </tr>
+      `;
+    });
+
+    html += `</tbody></table>`;
+    profilePopover.innerHTML = html;
+    profilePopover.style.display = 'block';
+
+    const closeBtn = document.getElementById('btnCloseProfilePopover');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        profilePopover.style.display = 'none';
+      });
+    }
+  }
+
+  if (profileChipBtn) {
+    profileChipBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const activeEntry = (state.indexed_docs || []).find(d => d.filename === state.active_doc);
+      const prof = state.profile || (activeEntry && activeEntry.profile);
+      toggleProfilePopover(prof, state.active_doc);
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    if (profilePopover && profilePopover.style.display === 'block') {
+      if (!profilePopover.contains(e.target) && !profileChipBtn.contains(e.target)) {
+        profilePopover.style.display = 'none';
+      }
+    }
+  });
+
   function renderActiveDocPill() {
     if (state.active_doc) {
       activeDocPill.style.display = 'inline-flex';
       activeDocName.textContent = state.active_doc;
       const analyzeInfo = document.getElementById('analyzeActiveDoc');
       if (analyzeInfo) analyzeInfo.textContent = state.active_doc;
+
+      const activeEntry = (state.indexed_docs || []).find(d => d.filename === state.active_doc);
+      const prof = state.profile || (activeEntry && activeEntry.profile);
+      if (prof && (activeEntry?.kind === 'tabular' || prof.columns)) {
+        const numNumeric = prof.columns ? prof.columns.filter(c => c.dtype === 'numeric').length : Object.keys(prof.numeric_summary || {}).length;
+        if (profileChipContainer && profileChipText) {
+          profileChipText.textContent = `📊 ${prof.row_count} rows • ${prof.col_count} cols • ${numNumeric} numeric`;
+          profileChipContainer.style.display = 'inline-flex';
+        }
+      } else {
+        if (profileChipContainer) profileChipContainer.style.display = 'none';
+        if (profilePopover) profilePopover.style.display = 'none';
+      }
     } else {
       activeDocPill.style.display = 'none';
       activeDocName.textContent = '';
+      if (profileChipContainer) profileChipContainer.style.display = 'none';
+      if (profilePopover) profilePopover.style.display = 'none';
       const analyzeInfo = document.getElementById('analyzeActiveDoc');
       if (analyzeInfo) analyzeInfo.textContent = 'No document active';
     }
@@ -403,6 +510,7 @@
       const data = await res.json();
       state.active_doc = data.active_doc;
       state.indexed_docs = data.indexed_docs;
+      state.profile = data.profile || null;
       renderRecentDocs();
       renderActiveDocPill();
       showToast(`Active document: ${filename}`, 'info');
@@ -424,6 +532,7 @@
       const data = await res.json();
       state.active_doc = data.active_doc;
       state.indexed_docs = data.indexed_docs;
+      if (!state.active_doc) state.profile = null;
       renderRecentDocs();
       renderActiveDocPill();
       showToast(`Deleted ${filename}`, 'info');
@@ -449,12 +558,15 @@
     });
   }
 
-  fileUploadInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
+  async function handleFileUpload(file) {
     if (!file) return;
 
-    // Reset input so same file can be selected again
-    fileUploadInput.value = '';
+    const allowed = ['.pdf', '.docx', '.txt', '.csv', '.xlsx'];
+    const ext = '.' + file.name.split('.').pop().toLowerCase();
+    if (!allowed.includes(ext)) {
+      showToast('Unsupported file type. Please upload a PDF, DOCX, TXT, CSV, or XLSX file.', 'error');
+      return;
+    }
 
     const formData = new FormData();
     formData.append('file', file);
@@ -478,9 +590,17 @@
       const data = await res.json();
       state.indexed_docs = data.indexed_docs;
       state.active_doc = data.active_doc;
+      state.profile = data.profile || null;
       renderRecentDocs();
       renderActiveDocPill();
-      showToast(`✓ Indexed ${data.chunks} chunks from ${data.filename}`, 'success');
+      if (data.kind === 'tabular' || data.row_count != null) {
+        const prof = data.profile;
+        const numNumeric = prof && prof.columns ? prof.columns.filter(c => c.dtype === 'numeric').length : 0;
+        const chipStr = prof ? `📊 ${prof.row_count} rows • ${prof.col_count} cols • ${numNumeric} numeric` : `📊 ${data.row_count} rows`;
+        showToast(`✓ Uploaded ${data.filename} (${chipStr})`, 'success');
+      } else {
+        showToast(`✓ Indexed ${data.chunks} chunks from ${data.filename}`, 'success');
+      }
       if (state.mode === 'Analyze') {
         loadAnalyzeTab(state.activeTab, true);
       }
@@ -490,9 +610,56 @@
       state.isUploading = false;
       updateSendButtonState();
     }
+  }
+
+  fileUploadInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    fileUploadInput.value = '';
+    if (file) {
+      await handleFileUpload(file);
+    }
   });
 
+  // ---- Window-level Drag & Drop (overlay, works in any state) ----
+  const dragOverlay = document.getElementById('dragOverlay');
+  let dragCounter = 0;
+
+  function isFileDrag(e) {
+    return e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
+  }
+  function hideDragOverlay() {
+    dragCounter = 0;
+    if (dragOverlay) dragOverlay.classList.remove('active');
+  }
+
+  window.addEventListener('dragenter', (e) => {
+    if (!isFileDrag(e)) return;
+    e.preventDefault();
+    dragCounter++;
+    if (dragCounter === 1 && dragOverlay) dragOverlay.classList.add('active');
+  });
+  window.addEventListener('dragover', (e) => {
+    if (!isFileDrag(e)) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+  });
+  window.addEventListener('dragleave', (e) => {
+    if (!isFileDrag(e)) return;
+    dragCounter--;
+    if (dragCounter <= 0) hideDragOverlay();
+  });
+  window.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    hideDragOverlay();
+    const files = e.dataTransfer ? e.dataTransfer.files : null;
+    if (files && files.length > 0) {
+      await handleFileUpload(files[0]);
+    }
+  });
+  window.addEventListener('dragend', hideDragOverlay);
+
   btnNewChat.addEventListener('click', async () => {
+    if (btnNewChat.disabled) return;
     if (state.isStreaming) {
       if (state.streamAbortController) {
         state.streamAbortController.abort();
@@ -540,7 +707,7 @@
       showToast(`Failed to create new chat: ${err.message}`, 'error');
     } finally {
       btnNewChat.disabled = false;
-      btnNewChat.innerHTML = originalText;
+      btnNewChat.innerHTML = '<span>+</span><span>New chat</span>';
       updateSendButtonState();
     }
   });
@@ -549,8 +716,20 @@
   // Chat Rendering & SSE Streaming Mechanics
   // ====================================================================
   function updateSendButtonState() {
+    if (state.isStreaming) {
+      btnSend.disabled = false;
+      btnSend.classList.add('btn-stop');
+      btnSend.innerHTML = '■';
+      btnSend.setAttribute('title', 'Stop generation');
+      btnSend.setAttribute('aria-label', 'Stop generation');
+      return;
+    }
+    btnSend.classList.remove('btn-stop');
+    btnSend.innerHTML = '↑';
+    btnSend.setAttribute('title', 'Send message');
+    btnSend.setAttribute('aria-label', 'Send message');
     const val = chatInput.value.trim();
-    btnSend.disabled = !val || state.isStreaming || state.isUploading;
+    btnSend.disabled = !val || state.isUploading;
   }
 
   chatInput.addEventListener('input', () => {
@@ -563,12 +742,22 @@
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
       e.preventDefault();
       if (!btnSend.disabled) {
-        sendMessage(chatInput.value.trim());
+        if (state.isStreaming) {
+          if (state.streamAbortController) state.streamAbortController.abort();
+        } else {
+          sendMessage(chatInput.value.trim());
+        }
       }
     }
   });
 
   btnSend.addEventListener('click', () => {
+    if (state.isStreaming) {
+      if (state.streamAbortController) {
+        state.streamAbortController.abort();
+      }
+      return;
+    }
     const text = chatInput.value.trim();
     if (text && !btnSend.disabled) {
       sendMessage(text);
@@ -620,8 +809,54 @@
       botWrap.appendChild(details);
     }
 
+    botWrap.appendChild(createMessageToolbar(text));
+
     row.appendChild(botWrap);
     chatMessages.appendChild(row);
+  }
+
+  function createMessageToolbar(text) {
+    const bar = document.createElement('div');
+    bar.className = 'riq-msg-toolbar';
+
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'btn-copy-msg';
+    copyBtn.setAttribute('title', 'Copy response');
+    copyBtn.setAttribute('aria-label', 'Copy response');
+    copyBtn.innerHTML = `
+      <svg class="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <span class="copy-label">Copy</span>
+    `;
+
+    copyBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      try {
+        await navigator.clipboard.writeText(text);
+        copyBtn.innerHTML = `
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--success, #10B981);">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          <span class="copy-label" style="color:var(--success, #10B981);">Copied!</span>
+        `;
+        setTimeout(() => {
+          copyBtn.innerHTML = `
+            <svg class="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <span class="copy-label">Copy</span>
+          `;
+        }, 2000);
+      } catch (err) {
+        showToast('Could not copy to clipboard', 'error');
+      }
+    });
+
+    bar.appendChild(copyBtn);
+    return bar;
   }
 
   function createSourcesDetails(sources) {
@@ -640,10 +875,22 @@
       const row = document.createElement('div');
       row.className = 'riq-citation-row';
       const label = s.source || 'Document';
-      const chunk = s.chunk !== undefined ? `#${s.chunk}` : '';
-      const score = s.score !== undefined ? ` · ${Math.round(s.score * 100)}% match` : '';
+      let headerTitle = label;
+      const parts = [];
+      if (s.kind === 'tabular' && s.row_start != null && s.row_end != null) {
+        headerTitle = `Rows ${s.row_start}-${s.row_end} • ${label}`;
+        if (s.sheet) parts.push(`Sheet: ${s.sheet}`);
+      } else if (s.kind === 'tabular_profile') {
+        headerTitle = `Dataset Overview • ${label}`;
+        if (s.row_end) parts.push(`All ${s.row_end} rows`);
+      } else {
+        if (s.page !== undefined && s.page !== null) parts.push(`Page ${s.page}`);
+        if (s.chunk !== undefined && s.chunk !== null) parts.push(`Chunk ${s.chunk}`);
+      }
+      if (s.score !== undefined && s.score !== null) parts.push(`${Math.round(s.score * 100)}% match`);
+      const meta = parts.join(' • ');
       row.innerHTML = `
-        <strong>${escapeHTML(label)} (Chunk ${escapeHTML(chunk)}${escapeHTML(score)}):</strong><br>
+        <strong>${escapeHTML(headerTitle)}${meta ? ` (${escapeHTML(meta)})` : ''}:</strong><br>
         "${escapeHTML((s.content || '').trim())}"
       `;
       listWrap.appendChild(row);
@@ -811,6 +1058,10 @@
               botWrap.appendChild(details);
             }
 
+            if (!botWrap.querySelector('.riq-msg-toolbar')) {
+              botWrap.appendChild(createMessageToolbar(finalAns));
+            }
+
             // Sync with local state
             state.messages.push({ role: 'user', content: question, timestamp: nowTime });
             state.messages.push({
@@ -846,6 +1097,26 @@
     } catch (err) {
       if (abortController.signal.aborted || err.name === 'AbortError') {
         if (rafId) cancelAnimationFrame(rafId);
+        if (!hasReplacedSkeleton) {
+          skeletonWrap.remove();
+          bodyContainer = document.createElement('div');
+          bodyContainer.className = 'riq-msg-bot-body';
+          botWrap.appendChild(bodyContainer);
+          hasReplacedSkeleton = true;
+          bodyContainer.innerHTML = '<span style="color:var(--text-muted); font-style:italic;">Generation stopped.</span>';
+        }
+        if (fullAnswer && !botWrap.querySelector('.riq-msg-toolbar')) {
+          botWrap.appendChild(createMessageToolbar(fullAnswer));
+        }
+        if (fullAnswer) {
+          state.messages.push({ role: 'user', content: question, timestamp: nowTime });
+          state.messages.push({
+            role: 'assistant',
+            content: fullAnswer,
+            sources: [],
+            timestamp: nowTime
+          });
+        }
         return;
       }
       console.error('Chat streaming failed:', err);
@@ -957,9 +1228,12 @@
       return;
     }
 
-    if (tabId === 'tabOverview' || tabId === 'tabAudit') {
+    if (tabId === 'tabAudit') {
       if (!state.analysisCache.resume || force) {
-        showOverviewLoading();
+        const axisContainer = document.getElementById('auditAxisContainer');
+        if (axisContainer) {
+          axisContainer.innerHTML = '<div class="riq-skeleton-wrap"><div class="riq-skeleton-line"></div><div class="riq-skeleton-line"></div><div class="riq-skeleton-line"></div></div>';
+        }
         try {
           const res = await fetch('/api/analyze/resume', { method: 'POST', credentials: 'same-origin' });
           if (!res.ok) {
@@ -972,7 +1246,6 @@
           return;
         }
       }
-      renderOverviewData(state.analysisCache.resume);
       renderAuditData(state.analysisCache.resume);
     } else if (tabId === 'tabQuestions') {
       if (!state.analysisCache.questions || force) {
@@ -993,34 +1266,70 @@
     }
   }
 
+  // 1. Empty State (When no document is uploaded)
   function showAnalyzeEmptyState() {
-    const gauge = document.getElementById('overviewGauge');
-    if (gauge) gauge.innerHTML = renderGaugeSVG(0);
-    const skills = document.getElementById('statSkills');
-    if (skills) skills.textContent = '—';
-    const exp = document.getElementById('statExp');
-    if (exp) exp.textContent = '—';
-    const kw = document.getElementById('statKeyword');
-    if (kw) kw.textContent = '—';
+    const axis = document.getElementById('auditAxisContainer');
+    if (axis) axis.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-muted);">Upload a résumé to view audit.</div>';
+    const mistakes = document.getElementById('auditMistakesContainer');
+    if (mistakes) mistakes.innerHTML = '';
+    const rewrites = document.getElementById('auditRewritesContainer');
+    if (rewrites) rewrites.innerHTML = '';
   }
 
-  function showOverviewLoading() {
-    const gauge = document.getElementById('overviewGauge');
-    if (gauge) gauge.innerHTML = '<div class="riq-skeleton-wrap" style="width:160px; height:160px; border-radius:50%; margin:0 auto;"></div>';
+  // --- NEW: Copy to Clipboard Utility ---
+  function copyToClipboard(text, btnElement) {
+    navigator.clipboard.writeText(text).then(() => {
+      const originalText = btnElement.textContent;
+      btnElement.textContent = 'Copied!';
+      btnElement.classList.add('copied');
+      setTimeout(() => {
+        btnElement.textContent = originalText;
+        btnElement.classList.remove('copied');
+      }, 1500);
+    }).catch(() => {
+      showToast('Could not copy to clipboard', 'error');
+    });
   }
 
-  function renderOverviewData(data) {
-    if (!data) return;
-    const score = data.overall_score || 0;
-    const gaugeWrap = document.getElementById('overviewGauge');
-    if (gaugeWrap) gaugeWrap.innerHTML = renderGaugeSVG(score, 170, 11);
+  // --- NEW: Download Analysis Report ---
+  function downloadAnalysisReport() {
+    if (!state.analysisCache.resume) {
+      showToast('Run an analysis first to download.', 'error');
+      return;
+    }
+    const data = state.analysisCache.resume;
+    let report = `RESUME IQ - PRO ANALYSIS REPORT\n`;
+    report += `Generated: ${new Date().toLocaleString()}\n`;
+    report += `${'='.repeat(50)}\n\n`;
+    report += `OVERALL ATS SCORE: ${data.overall_score}/100\n\n`;
+    
+    report += `AXIS BREAKDOWN:\n`;
+    if (data.axis_scores) {
+      for (const [axis, score] of Object.entries(data.axis_scores)) {
+        const feedback = data.axis_feedback?.[axis] || 'No specific feedback provided.';
+        report += `- ${axis.replace(/_/g, ' ').toUpperCase()}: ${score}/100\n  Reason: ${feedback}\n`;
+      }
+    }
+    
+    report += `\nCRITICAL MISTAKES & MISSING ELEMENTS:\n`;
+    (data.mistakes_and_missing || []).forEach((m, i) => report += `${i + 1}. ${m}\n`);
+    
+    report += `\nBULLET POINT REWRITES:\n`;
+    (data.bullet_rewrites || []).forEach((rw, i) => {
+      report += `\nRewrite ${i + 1}:\n[WEAK] ${rw.weak_original}\n[STRONG] ${rw.strong_version}\n`;
+    });
 
-    const skillsCount = data.axis_scores ? Object.keys(data.axis_scores).length * 2 + ' skills' : '—';
-    document.getElementById('statSkills').textContent = skillsCount;
-    document.getElementById('statExp').textContent = '5+ yrs';
-    document.getElementById('statKeyword').textContent = (data.mistakes_and_missing && data.mistakes_and_missing.length > 0) ? 'ATS Score' : 'None';
+    const blob = new Blob([report], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ResumeIQ_Analysis_${Date.now()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Report downloaded!', 'success');
   }
 
+  // --- UPDATE: Render Audit Data (Adds Copy Buttons & Tooltips) ---
   function renderAuditData(data) {
     if (!data) return;
     const axisContainer = document.getElementById('auditAxisContainer');
@@ -1028,13 +1337,18 @@
 
     if (data.axis_scores) {
       for (const [axisName, axisScore] of Object.entries(data.axis_scores)) {
+        const feedback = data.axis_feedback?.[axisName] || 'No specific feedback.';
+        const formattedName = axisName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        
         const card = document.createElement('div');
         card.className = 'axis-card';
-        const formattedName = axisName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         card.innerHTML = `
           <div class="axis-head">
-            <span>${escapeHTML(formattedName)}</span>
-            <span>${axisScore}/100</span>
+            <span class="axis-title-wrap">
+              ${escapeHTML(formattedName)}
+              <span class="info-icon" title="${escapeHTML(feedback)}">ⓘ</span>
+            </span>
+            <span class="axis-score">${axisScore}/100</span>
           </div>
           <div class="progress-bar-bg">
             <div class="progress-bar-fill" style="width:${axisScore}%;"></div>
@@ -1044,37 +1358,49 @@
       }
     }
 
+    // Mistakes
     const mistakesContainer = document.getElementById('auditMistakesContainer');
     mistakesContainer.innerHTML = '';
-    if (data.mistakes_and_missing && data.mistakes_and_missing.length > 0) {
+    if (data.mistakes_and_missing) {
       data.mistakes_and_missing.forEach(m => {
         const item = document.createElement('div');
         item.className = 'weak-box';
-        item.style.marginBottom = '8px';
         item.textContent = m;
         mistakesContainer.appendChild(item);
       });
     }
 
+    // Rewrites (WITH COPY BUTTON)
     const rewritesContainer = document.getElementById('auditRewritesContainer');
     rewritesContainer.innerHTML = '';
-    if (data.bullet_rewrites && data.bullet_rewrites.length > 0) {
+    if (data.bullet_rewrites) {
       data.bullet_rewrites.forEach(rw => {
         const card = document.createElement('div');
         card.className = 'rewrite-card';
         card.innerHTML = `
           <div class="weak-box"><strong>Weak Original:</strong><br>${escapeHTML(rw.weak_original)}</div>
-          <div class="strong-box"><strong>Strong Version:</strong><br>${escapeHTML(rw.strong_version)}</div>
+          <div class="strong-box">
+            <div class="strong-box-head">
+              <strong>Strong Version:</strong>
+              <button class="copy-btn" data-copy="${escapeHTML(rw.strong_version)}">Copy</button>
+            </div>
+            <div>${escapeHTML(rw.strong_version)}</div>
+          </div>
         `;
         rewritesContainer.appendChild(card);
       });
     }
+    
+    // Attach copy listeners
+    rewritesContainer.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => copyToClipboard(e.target.dataset.copy, e.target));
+    });
   }
 
+  // --- UPDATE: Render Questions Data (WITH COPY BUTTON) ---
   function renderQuestionsData(data) {
     const list = document.getElementById('iqListContainer');
     list.innerHTML = '';
-
     const questions = (data && data.questions) || [];
     if (questions.length === 0) {
       list.innerHTML = '<div style="color:var(--text-muted); font-style:italic;">No questions generated</div>';
@@ -1085,14 +1411,72 @@
       const card = document.createElement('div');
       card.className = 'question-item-card';
       card.setAttribute('data-category', q.category || 'General');
-
       card.innerHTML = `
-        <span class="q-category-badge">${escapeHTML(q.category || 'General')}</span>
+        <div class="q-header">
+          <span class="q-category-badge">${escapeHTML(q.category || 'General')}</span>
+          <button class="copy-btn" data-copy="${escapeHTML(q.question)}">Copy Question</button>
+        </div>
         <div class="q-text">${escapeHTML(q.question)}</div>
-        <div class="q-rubric"><strong>What is tested:</strong> ${escapeHTML(q.what_is_tested || '—')}</div>
-        <div class="q-rubric"><strong>Ideal answer outline:</strong> ${escapeHTML(q.ideal_answer_outline || '—')}</div>
+        <div class="q-rubric"><strong>Tests:</strong> ${escapeHTML(q.what_is_tested || '—')}</div>
+        <div class="q-rubric"><strong>Ideal Answer:</strong> ${escapeHTML(q.ideal_answer_outline || '—')}</div>
       `;
       list.appendChild(card);
+    });
+
+    list.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => copyToClipboard(e.target.dataset.copy, e.target));
+    });
+  }
+
+  // --- UPDATE: JD Match Rendering (Handles Categorized Keywords) ---
+  function renderJdResults(matchData) {
+    document.getElementById('jdGaugeWrap').innerHTML = renderGaugeSVG(matchData.match_percentage || 0, 110, 8);
+
+    // Helper to render categorized chips
+    const renderChips = (containerId, categories, type) => {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+      if (!categories) return;
+      
+      const classMap = { hard_skills: 'kw-chip-hard', soft_skills: 'kw-chip-soft', tools: 'kw-chip-tool' };
+      const labelMap = { hard_skills: 'Hard', soft_skills: 'Soft', tools: 'Tool' };
+
+      if (Array.isArray(categories)) {
+        categories.forEach(k => {
+          const chip = document.createElement('span');
+          chip.className = `kw-chip ${type === 'match' ? 'kw-chip-match' : 'kw-chip-missing'}`;
+          const icon = type === 'match' ? '✓' : '✗';
+          chip.textContent = `${icon} ${k}`;
+          container.appendChild(chip);
+        });
+        return;
+      }
+
+      for (const [cat, keywords] of Object.entries(categories)) {
+        if (Array.isArray(keywords)) {
+          keywords.forEach(k => {
+            const chip = document.createElement('span');
+            chip.className = `kw-chip ${classMap[cat] || (type === 'match' ? 'kw-chip-match' : 'kw-chip-missing')}`;
+            const icon = type === 'match' ? '✓' : '✗';
+            const badge = labelMap[cat] ? ` [${labelMap[cat]}]` : '';
+            chip.textContent = `${icon} ${k}${badge}`;
+            container.appendChild(chip);
+          });
+        }
+      }
+    };
+
+    renderChips('jdMatchedChips', matchData.matched_keywords, 'match');
+    renderChips('jdMissingChips', matchData.missing_keywords, 'missing');
+
+    const sugList = document.getElementById('jdSuggestionsList');
+    sugList.innerHTML = '';
+    (matchData.edit_suggestions || []).forEach(s => {
+      const card = document.createElement('div');
+      card.className = 'axis-card';
+      card.style.marginBottom = '8px';
+      card.textContent = s;
+      sugList.appendChild(card);
     });
   }
 
@@ -1144,40 +1528,7 @@
 
       const matchData = await res.json();
       jdResultWrap.style.display = 'block';
-
-      // Match Ring
-      document.getElementById('jdGaugeWrap').innerHTML = renderGaugeSVG(matchData.match_percentage || 0, 110, 8);
-
-      // Chips
-      const matchChips = document.getElementById('jdMatchedChips');
-      matchChips.innerHTML = '';
-      (matchData.matched_keywords || []).forEach(k => {
-        const chip = document.createElement('span');
-        chip.className = 'kw-chip kw-chip-match';
-        chip.textContent = '✓ ' + k;
-        matchChips.appendChild(chip);
-      });
-
-      const missingChips = document.getElementById('jdMissingChips');
-      missingChips.innerHTML = '';
-      (matchData.missing_keywords || []).forEach(k => {
-        const chip = document.createElement('span');
-        chip.className = 'kw-chip kw-chip-missing';
-        chip.textContent = '✗ ' + k;
-        missingChips.appendChild(chip);
-      });
-
-      // Suggestions
-      const sugList = document.getElementById('jdSuggestionsList');
-      sugList.innerHTML = '';
-      (matchData.edit_suggestions || []).forEach(s => {
-        const card = document.createElement('div');
-        card.className = 'axis-card';
-        card.style.marginBottom = '8px';
-        card.textContent = s;
-        sugList.appendChild(card);
-      });
-
+      renderJdResults(matchData);
       showToast('JD Analysis complete', 'success');
     } catch (e) {
       showToast(e.message, 'error');
@@ -1186,6 +1537,72 @@
       btnRunJdMatch.textContent = 'Match Against Resume';
     }
   });
+
+  const btnDownloadReport = document.getElementById('btnDownloadReport');
+  if (btnDownloadReport) {
+    btnDownloadReport.addEventListener('click', downloadAnalysisReport);
+  }
+
+  // ====================================================================
+  // Theme System: Light / Dark / System
+  // ====================================================================
+  const btnThemeToggle = document.getElementById('btnThemeToggle');
+  const systemDarkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+  const THEMES = ['light', 'dark', 'system'];
+  const THEME_ICONS = {
+    light: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>',
+    dark: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
+    system: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>'
+  };
+  const THEME_LABELS = { light: 'Light', dark: 'Dark', system: 'System' };
+
+  let currentThemePref = localStorage.getItem('riq-theme') || 'system';
+
+  function applyTheme(pref, animate = true) {
+    if (animate) {
+      document.documentElement.classList.add('theme-transitioning');
+    }
+
+    let effectiveTheme = pref;
+    if (pref === 'system') {
+      effectiveTheme = systemDarkQuery.matches ? 'dark' : 'light';
+    }
+
+    document.documentElement.setAttribute('data-theme', effectiveTheme);
+
+    if (btnThemeToggle) {
+      btnThemeToggle.innerHTML = THEME_ICONS[pref] || THEME_ICONS.system;
+      btnThemeToggle.title = `Theme: ${THEME_LABELS[pref] || 'System'}`;
+      btnThemeToggle.setAttribute('aria-label', `Theme: ${THEME_LABELS[pref] || 'System'}`);
+    }
+
+    if (animate) {
+      setTimeout(() => {
+        document.documentElement.classList.remove('theme-transitioning');
+      }, 250);
+    }
+  }
+
+  function cycleTheme() {
+    const nextIdx = (THEMES.indexOf(currentThemePref) + 1) % THEMES.length;
+    currentThemePref = THEMES[nextIdx];
+    localStorage.setItem('riq-theme', currentThemePref);
+    applyTheme(currentThemePref, true);
+  }
+
+  if (btnThemeToggle) {
+    btnThemeToggle.addEventListener('click', cycleTheme);
+  }
+
+  systemDarkQuery.addEventListener('change', () => {
+    if (currentThemePref === 'system') {
+      applyTheme('system', true);
+    }
+  });
+
+  // Apply theme immediately without transition flash
+  applyTheme(currentThemePref, false);
 
   // Initial Load
   loadInitialState();

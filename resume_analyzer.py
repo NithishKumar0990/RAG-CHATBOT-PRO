@@ -2,67 +2,40 @@
 import json
 import re
 import sys
-import streamlit as st
 from rag_pipeline import _get_llm, llm
 
-# Dedicated LLM instance for analysis tasks with larger output token limit (1024)
-analyzer_llm = _get_llm(max_new_tokens=1024, temperature=0.01) if hasattr(_get_llm, '__call__') else llm
+analyzer_llm = _get_llm(max_new_tokens=1500, temperature=0.05) if hasattr(_get_llm, '__call__') else llm
 
 def _clean_and_parse_json(raw_text: str) -> dict:
-    """
-    Safely extract and parse JSON from raw LLM output text.
-    Strips markdown code blocks, trailing commas, and extracts JSON objects.
-    """
     if not raw_text or not raw_text.strip():
         raise ValueError("LLM returned an empty response.")
-        
     text = raw_text.strip()
-    
-    # Strip markdown code blocks like ```json ... ```
     if "```" in text:
-        # Match content inside ```json ... ``` or ``` ... ```
         match = re.search(r"```(?:json)?\s*(.*?)\s*```", text, re.DOTALL)
-        if match:
-            text = match.group(1).strip()
-            
-    # Try direct parse
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        pass
-        
-    # Attempt to locate first '{' and last '}'
-    start = text.find("{")
-    end = text.rfind("}")
+        if match: text = match.group(1).strip()
+    try: return json.loads(text)
+    except json.JSONDecodeError: pass
+    start, end = text.find("{"), text.rfind("}")
     if start != -1 and end != -1 and end > start:
-        json_str = text[start:end+1]
-        try:
-            return json.loads(json_str)
-        except json.JSONDecodeError:
-            pass
-            
-    raise ValueError(f"Failed to parse valid JSON from LLM output: {raw_text[:200]}...")
+        try: return json.loads(text[start:end+1])
+        except json.JSONDecodeError: pass
+    raise ValueError(f"Failed to parse JSON: {raw_text[:200]}...")
 
+def _invoke_llm(prompt_text: str) -> dict:
+    from langchain_core.prompts import PromptTemplate
+    from langchain_core.output_parsers import StrOutputParser
+    chain = PromptTemplate.from_template("{prompt}") | analyzer_llm | StrOutputParser()
+    raw_output = chain.invoke({"prompt": prompt_text})
+    return _clean_and_parse_json(str(raw_output))
 
-@st.cache_data(ttl=3600)
 def generate_interview_questions(resume_text: str) -> dict:
-    """
-    Feature A: Generate 10 interview questions across 3 categories:
-    - Technical (from listed skills)
-    - Project/Experience-based (from actual work history)
-    - Behavioral
-
-    Returns a dict with key 'questions' containing 10 question objects.
-    """
     if not resume_text or len(resume_text.strip()) < 50:
-        raise ValueError("Resume text is empty or too short for analysis.")
+        raise ValueError("Resume text is too short.")
+    
+    prompt_text = f"""You are an expert technical recruiter. Analyze the resume and generate exactly 10 high-quality interview questions.
+Categorize them into: "Technical", "Project/Experience", and "Behavioral".
 
-    prompt_text = f"""Analyze the resume below and generate exactly 10 high-quality interview questions categorized into: Technical, Project/Experience-based, and Behavioral.
-
-CRITICAL FORMATTING INSTRUCTIONS:
-- You MUST return ONLY a valid JSON object starting with '{{"' and ending with '}}'.
-- Do NOT output any intro/outro text, markdown fences, or conversational preamble.
-- Keep 'what_is_tested' under 15 words and 'ideal_answer_outline' under 25 words per question so the JSON is concise and complete.
+CRITICAL: Return ONLY valid JSON. No markdown, no intro/outro text.
 
 Structure:
 {{
@@ -70,51 +43,28 @@ Structure:
     {{
       "category": "Technical",
       "question": "Question text...",
-      "what_is_tested": "Brief explanation...",
-      "ideal_answer_outline": "Key points..."
+      "what_is_tested": "Brief explanation (<= 15 words)",
+      "ideal_answer_outline": "Key points to look for (<= 25 words)"
     }}
   ]
 }}
 
-Resume Content:
+Resume:
 {resume_text}
 """
+    data = _invoke_llm(prompt_text)
+    if "questions" not in data: raise ValueError("Missing 'questions' key.")
+    data["questions"] = data["questions"][:10]
+    return data
 
-    # Call LLM helper
-    try:
-        # We can construct input dict for LLM chain
-        from langchain_core.prompts import PromptTemplate
-        from langchain_core.output_parsers import StrOutputParser
-        
-        chain = PromptTemplate.from_template("{prompt}") | analyzer_llm | StrOutputParser()
-        raw_output = chain.invoke({"prompt": prompt_text})
-        data = _clean_and_parse_json(str(raw_output))
-        
-        if "questions" not in data or not isinstance(data["questions"], list):
-            raise ValueError("Response missing 'questions' array.")
-            
-        data["questions"] = data["questions"][:10]
-        return data
-    except Exception as e:
-        print(f"[ANALYZER ERROR] generate_interview_questions failed: {e}", file=sys.stderr)
-        raise e
-
-
-@st.cache_data(ttl=3600)
 def review_resume(resume_text: str) -> dict:
-    """
-    Feature B: Review resume, score out of 100 across 5 axes, list mistakes/missing sections,
-    and provide 3 'before & after' bullet point rewrites.
-    """
     if not resume_text or len(resume_text.strip()) < 50:
-        raise ValueError("Resume text is empty or too short for review.")
+        raise ValueError("Resume text is too short.")
 
-    prompt_text = f"""Evaluate the resume below across 5 core evaluation axes: formatting, ats_friendliness, action_verbs, quantified_achievements, section_completeness.
+    prompt_text = f"""You are an expert ATS (Applicant Tracking System) and resume auditor. Evaluate the resume across 5 axes.
+Be highly critical. If metrics are missing, score 'quantified_achievements' below 50.
 
-CRITICAL FORMATTING INSTRUCTIONS:
-- You MUST return ONLY a valid JSON object starting with '{{"' and ending with '}}'.
-- Do NOT output any intro/outro text, markdown fences, or conversational preamble.
-- Keep list items concise so output is complete.
+CRITICAL: Return ONLY valid JSON. No markdown, no intro/outro text.
 
 Structure:
 {{
@@ -123,102 +73,84 @@ Structure:
     "formatting": 80,
     "ats_friendliness": 85,
     "action_verbs": 90,
-    "quantified_achievements": 80,
+    "quantified_achievements": 40,
     "section_completeness": 90
   }},
-  "mistakes_and_missing": [
-    "Mistake item 1...",
-    "Mistake item 2..."
-  ],
+  "axis_feedback": {{
+    "formatting": "Brief reason for score...",
+    "ats_friendliness": "Brief reason for score...",
+    "action_verbs": "Brief reason for score...",
+    "quantified_achievements": "Brief reason for score...",
+    "section_completeness": "Brief reason for score..."
+  }},
+  "mistakes_and_missing": ["Mistake 1", "Mistake 2"],
   "bullet_rewrites": [
-    {{
-      "weak_original": "Weak original bullet from resume",
-      "strong_version": "Improved action-driven bullet point with metrics"
-    }},
-    {{
-      "weak_original": "...",
-      "strong_version": "..."
-    }},
-    {{
-      "weak_original": "...",
-      "strong_version": "..."
-    }}
+    {{ "weak_original": "Weak bullet", "strong_version": "Strong, metric-driven bullet" }}
   ]
 }}
 
-Resume Content:
+Resume:
 {resume_text}
 """
+    data = _invoke_llm(prompt_text)
+    for k in ["overall_score", "axis_scores", "axis_feedback", "mistakes_and_missing", "bullet_rewrites"]:
+        if k not in data: raise ValueError(f"Missing key: {k}")
+    return data
 
-    try:
-        from langchain_core.prompts import PromptTemplate
-        from langchain_core.output_parsers import StrOutputParser
-        
-        chain = PromptTemplate.from_template("{prompt}") | analyzer_llm | StrOutputParser()
-        raw_output = chain.invoke({"prompt": prompt_text})
-        data = _clean_and_parse_json(str(raw_output))
-        
-        required_keys = ["overall_score", "axis_scores", "mistakes_and_missing", "bullet_rewrites"]
-        for k in required_keys:
-            if k not in data:
-                raise ValueError(f"Response missing required JSON key: {k}")
-                
-        return data
-    except Exception as e:
-        print(f"[ANALYZER ERROR] review_resume failed: {e}", file=sys.stderr)
-        raise e
-
-
-@st.cache_data(ttl=3600)
 def match_job_description(resume_text: str, jd_text: str) -> dict:
-    """
-    Feature C: Compare resume against Job Description (JD).
-    Outputs match percentage, matched keywords, missing keywords, and 3 specific resume edit suggestions.
-    """
-    if not resume_text or len(resume_text.strip()) < 50:
-        raise ValueError("Resume text is empty or too short for JD matching.")
-    if not jd_text or len(jd_text.strip()) < 30:
-        raise ValueError("Job description is empty or too short.")
+    if not resume_text or len(resume_text.strip()) < 50: raise ValueError("Resume too short.")
+    if not jd_text or len(jd_text.strip()) < 30: raise ValueError("JD too short.")
 
-    prompt_text = f"""Compare the candidate's resume against the Job Description (JD) below.
+    prompt_text = f"""Compare the resume against the Job Description. Categorize keywords into Hard Skills, Soft Skills, and Tools/Technologies.
+Identify what is matched and what is missing in each category.
 
-CRITICAL FORMATTING INSTRUCTIONS:
-- You MUST return ONLY a valid JSON object starting with '{{"' and ending with '}}'.
-- Do NOT output any intro/outro text, markdown fences, or conversational preamble.
+CRITICAL: Return ONLY valid JSON. No markdown, no intro/outro text.
 
 Structure:
 {{
   "match_percentage": 78,
-  "matched_keywords": ["Keyword 1", "Keyword 2", ...],
-  "missing_keywords": ["Missing Keyword 1", "Missing Keyword 2", ...],
-  "edit_suggestions": [
-    "Actionable recommendation 1 targeting this exact JD...",
-    "Actionable recommendation 2...",
-    "Actionable recommendation 3..."
-  ]
+  "matched_keywords": {{
+    "hard_skills": ["Skill 1"],
+    "soft_skills": ["Skill 2"],
+    "tools": ["Tool 1"]
+  }},
+  "missing_keywords": {{
+    "hard_skills": ["Missing Skill 1"],
+    "soft_skills": ["Missing Skill 2"],
+    "tools": ["Missing Tool 1"]
+  }},
+  "edit_suggestions": ["Actionable suggestion 1", "Suggestion 2", "Suggestion 3"]
 }}
 
-Candidate Resume:
-{resume_text}
-
-Job Description:
-{jd_text}
+Resume: {resume_text}
+JD: {jd_text}
 """
+    data = _invoke_llm(prompt_text)
+    for k in ["match_percentage", "matched_keywords", "missing_keywords", "edit_suggestions"]:
+        if k not in data: raise ValueError(f"Missing key: {k}")
+    return data
 
-    try:
-        from langchain_core.prompts import PromptTemplate
-        from langchain_core.output_parsers import StrOutputParser
-        
-        chain = PromptTemplate.from_template("{prompt}") | analyzer_llm | StrOutputParser()
-        raw_output = chain.invoke({"prompt": prompt_text})
-        data = _clean_and_parse_json(str(raw_output))
-        
-        required_keys = ["match_percentage", "matched_keywords", "missing_keywords", "edit_suggestions"]
-        for k in required_keys:
-            if k not in data:
-                raise ValueError(f"Response missing required JSON key: {k}")
-                
-        return data
-    except Exception as e:
-        print(f"[ANALYZER ERROR] match_job_description failed: {e}", file=sys.stderr)
-        raise e
+def generate_resume_summary(resume_text: str, jd_text: str) -> dict:
+    """NEW FEATURE: Generates a tailored professional summary."""
+    if not resume_text or len(resume_text.strip()) < 50: raise ValueError("Resume too short.")
+    
+    jd_context = jd_text if jd_text and len(jd_text.strip()) > 20 else "General industry standards."
+    
+    prompt_text = f"""Write a powerful, 3-sentence professional summary for the top of a resume. 
+Tailor it to highlight the candidate's core strengths and align them with the target role.
+Do not use first-person pronouns (I, me, my). Start directly with an action adjective or title.
+
+CRITICAL: Return ONLY valid JSON. No markdown, no intro/outro text.
+
+Structure:
+{{
+  "summary": "The 3-sentence professional summary text.",
+  "why_this_works": "Brief explanation of why this summary is effective for this specific role."
+}}
+
+Resume: {resume_text}
+Target Role Context: {jd_context}
+"""
+    data = _invoke_llm(prompt_text)
+    if "summary" not in data: raise ValueError("Missing 'summary' key.")
+    return data

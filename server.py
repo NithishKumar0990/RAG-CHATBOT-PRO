@@ -44,15 +44,17 @@ from web_adapters import (
     fallback_generate_interview_questions,
     fallback_match_job_description
 )
-from document_parser import parse_document
+from document_parser import parse_document, parse_tabular
 from resume_analyzer import (
     review_resume,
     generate_interview_questions,
-    match_job_description
+    match_job_description,
+    generate_resume_summary
 )
 import rag_pipeline
 from rag_pipeline import (
     index_uploaded_document,
+    index_tabular_document,
     delete_document_by_name,
     stream_answer,
     _rewrite_question,
@@ -124,6 +126,16 @@ class SessionSecurityMiddleware(BaseHTTPMiddleware):
 
         return response
 
+class ProcessTimeMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        start_time = time.perf_counter()
+        response = await call_next(request)
+        process_time = time.perf_counter() - start_time
+        response.headers["X-Process-Time"] = f"{process_time:.3f}"
+        logger.info(f"{request.method} {request.url.path} completed in {process_time:.3f}s")
+        return response
+
+app.add_middleware(ProcessTimeMiddleware)
 app.add_middleware(SessionSecurityMiddleware)
 
 
@@ -189,6 +201,7 @@ def get_state(request: Request):
         return {
             "indexed_docs": active_indexed,
             "active_doc": sess.get("active_doc"),
+            "profile": sess.get("doc_profiles", {}).get(sess.get("active_doc")),
             "chats": get_chats_list(sess),
             "active_chat_id": sess.get("active_chat_id"),
             "history_count": len(active_chat.get("messages", [])),
@@ -229,23 +242,52 @@ async def post_upload(request: Request, file: UploadFile = File(...)):
     shim = UploadedFileShim(filename, file_bytes)
 
     with session_scope(sess):
-        try:
-            parsed_text = parse_document(shim)
-        except Exception as parse_err:
-            logger.warning(f"Parse error for {filename}: {parse_err}")
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Failed to parse document: {parse_err}"
+        if ext in ["xlsx", "csv"]:
+            try:
+                tabular_res = parse_tabular(shim)
+            except Exception as parse_err:
+                logger.warning(f"Tabular parse error for {filename}: {parse_err}")
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=str(parse_err)
+                )
+
+            df = tabular_res["dataframe"]
+            sheet_name = tabular_res["sheet_name"]
+            row_count = tabular_res["row_count"]
+            profile = tabular_res.get("profile")
+
+            num_chunks, total_rows = index_tabular_document(
+                df,
+                filename=filename,
+                sheet_name=sheet_name,
+                vectorstore=sess["vectorstore"]
             )
 
-        if not parsed_text or len(parsed_text.strip()) < 20:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Uploaded document is empty or contains no readable text."
-            )
+            # Build full text representation for doc_texts session memory
+            parsed_text = f"Dataset: {filename} • Sheet: {sheet_name} • {total_rows} rows\n" + df.to_string(index=False, max_rows=50)
+            is_tabular = True
+        else:
+            try:
+                parsed_text, pages = parse_document(shim, return_pages=True)
+            except Exception as parse_err:
+                logger.warning(f"Parse error for {filename}: {parse_err}")
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Failed to parse document: {parse_err}"
+                )
 
-        # Index into session store
-        num_chunks = index_uploaded_document(parsed_text, filename=filename, vectorstore=sess["vectorstore"])
+            if not parsed_text or len(parsed_text.strip()) < 20:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Uploaded document is empty or contains no readable text."
+                )
+
+            # Index into session store
+            num_chunks = index_uploaded_document(parsed_text, filename=filename, vectorstore=sess["vectorstore"], pages=pages)
+            is_tabular = False
+            sheet_name = None
+            row_count = None
 
         # Format file size
         if len(file_bytes) >= 1024 * 1024:
@@ -277,6 +319,12 @@ async def post_upload(request: Request, file: UploadFile = File(...)):
             "size": size_str,
             "uploaded_at": upload_time
         }
+        if is_tabular:
+            sess.setdefault("doc_profiles", {})[filename] = profile
+            doc_entry["kind"] = "tabular"
+            doc_entry["row_count"] = row_count
+            doc_entry["sheet_name"] = sheet_name
+            doc_entry["profile"] = profile
 
         if existing_idx is not None:
             sess["indexed_docs"][existing_idx] = doc_entry
@@ -292,12 +340,19 @@ async def post_upload(request: Request, file: UploadFile = File(...)):
 
         logger.info(f"Session {sess['sid'][:8]} indexed {filename} ({num_chunks} chunks)")
 
-        return {
+        res_payload = {
             "filename": filename,
             "chunks": num_chunks,
             "indexed_docs": active_chat["indexed_docs"],
             "active_doc": sess["active_doc"]
         }
+        if is_tabular:
+            res_payload["kind"] = "tabular"
+            res_payload["row_count"] = row_count
+            res_payload["sheet_name"] = sheet_name
+            res_payload["profile"] = profile
+
+        return res_payload
 
 
 @app.post("/api/doc/{filename}/activate")
@@ -321,7 +376,8 @@ def activate_doc(filename: str, request: Request):
 
         return {
             "active_doc": filename,
-            "indexed_docs": active_chat["indexed_docs"]
+            "indexed_docs": active_chat["indexed_docs"],
+            "profile": sess.get("doc_profiles", {}).get(filename)
         }
 
 
@@ -338,6 +394,7 @@ def delete_doc(filename: str, request: Request):
 
         del_chunks = delete_document_by_name(filename, vectorstore=sess["vectorstore"])
         sess["doc_texts"].pop(filename, None)
+        sess.get("doc_profiles", {}).pop(filename, None)
         sess["indexed_docs"] = [d for d in sess["indexed_docs"] if d["filename"] != filename]
         sess["analysis_cache"].clear()
 
@@ -417,6 +474,7 @@ def new_chat(request: Request):
         # Clear document metadata
         sess["indexed_docs"] = []
         sess["doc_texts"] = {}
+        sess["doc_profiles"] = {}
         sess["active_doc"] = None
         sess["full_doc_text"] = ""
         sess["doc_name"] = ""
@@ -680,16 +738,32 @@ async def post_chat(request: Request):
 
             logger.info(f'REWRITE sid={sid[:8]} original="{question}" rewritten="{rewritten_q}"')
 
+            doc_profile = sess.get("doc_profiles", {}).get(active_doc) if active_doc else None
+
             # Stream tokens
             for chunk in stream_answer(
                 question,
                 history=history,
                 sources_out=sources,
                 doc_name=active_doc,
-                vectorstore=sess["vectorstore"]
+                vectorstore=sess["vectorstore"],
+                doc_profile=doc_profile
             ):
                 if await request.is_disconnected():
-                    logger.info(f"Client disconnected mid-stream for session {sid[:8]}")
+                    logger.info(f"Client disconnected mid-stream for session {sid[:8]}; saving partial answer ({len(full_answer)} chars)")
+                    if full_answer:
+                        active_chat["messages"].append({
+                            "role": "user",
+                            "content": question,
+                            "timestamp": user_ts
+                        })
+                        active_chat["messages"].append({
+                            "role": "assistant",
+                            "content": full_answer,
+                            "sources": sources,
+                            "timestamp": bot_ts
+                        })
+                        sess["chat_history"] = active_chat["messages"]
                     return
                 full_answer += chunk
                 yield sse_token_event(chunk)
@@ -849,6 +923,22 @@ async def analyze_jd(
             encoded = jsonable_encoder(match_res, custom_encoder={set: list})
             sess["analysis_cache"][cache_key] = encoded
             return JSONResponse(content=encoded)
+
+
+@app.post("/api/analyze/summary")
+def analyze_summary(request: Request, jd_text: Optional[str] = Form(None)):
+    """Generate a tailored professional summary."""
+    sess = request.state.session
+    with session_scope(sess):
+        resume_text = sess.get("full_doc_text")
+        if not resume_text or len(resume_text.strip()) < 50:
+            raise HTTPException(status_code=400, detail="Please upload a resume first.")
+
+        try:
+            summary_data = generate_resume_summary(resume_text, jd_text or "")
+            return JSONResponse(content=jsonable_encoder(summary_data))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Summary generation failed: {str(e)}")
 
 
 # ======================================================================

@@ -25,6 +25,7 @@ import rag_pipeline
 from rag_pipeline import (
     embedding_model,
     index_uploaded_document,
+    index_tabular_document,
     delete_document_by_name,
     retrieve,
     stream_answer,
@@ -34,7 +35,7 @@ from rag_pipeline import (
     FALLBACK_MSG,
     UPLOADED_SIMILARITY_THRESHOLD
 )
-from document_parser import parse_document
+from document_parser import parse_document, parse_tabular
 from resume_analyzer import (
     review_resume,
     generate_interview_questions,
@@ -55,7 +56,7 @@ SUGGESTED_QUESTIONS = [
     "What projects should I highlight?"
 ]
 
-ACCEPTED_FILE_TYPES = ["pdf", "docx", "txt", "csv"]
+ACCEPTED_FILE_TYPES = ["pdf", "docx", "txt", "csv", "xlsx"]
 
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "200"))
 
@@ -129,6 +130,7 @@ def create_session_data(sid: str) -> Dict[str, Any]:
         "collection_name": col_name,
         "indexed_docs": [],  # [{filename, chunks, size, uploaded_at}]
         "doc_texts": {},     # filename -> parsed text
+        "doc_profiles": {},  # filename -> dataset profile dict
         "active_doc": None,
         "full_doc_text": "",
         "doc_name": "",
@@ -359,6 +361,13 @@ def fallback_review_resume(text: str) -> dict:
             "quantified_achievements": 85 if has_metrics else 65,
             "section_completeness": 90 if (has_skills and has_exp) else 70
         },
+        "axis_feedback": {
+            "formatting": "Good structural hierarchy and consistent margins." if len(lines) > 10 else "Document is brief; expand standard layout.",
+            "ats_friendliness": "Standard ATS-parsable headings and typography detected." if has_skills else "Missing explicit technical skill tags.",
+            "action_verbs": "Strong action verbs lead primary accomplishment statements.",
+            "quantified_achievements": "Strong percentage-based impact metrics present." if has_metrics else "Lacks concrete revenue, latency, or throughput numbers.",
+            "section_completeness": "Core experience, skills, and summary sections verified." if (has_skills and has_exp) else "Ensure education, skills, and experience sections are distinct."
+        },
         "mistakes_and_missing": [
             "Consider adding more quantified impact metrics ($ or % improvement) across all project bullets.",
             "Ensure standard section headings (e.g. 'Work Experience', 'Technical Skills') for optimal ATS parsing.",
@@ -463,8 +472,16 @@ def fallback_match_job_description(resume_text: str, jd_text: str) -> dict:
     
     return {
         "match_percentage": pct,
-        "matched_keywords": matched[:8] if matched else ["Python", "Engineering"],
-        "missing_keywords": missing[:6] if missing else ["GraphQL", "Cloud Deployment"],
+        "matched_keywords": {
+            "hard_skills": matched[:3] if matched else ["Python", "FastAPI"],
+            "soft_skills": [m for m in matched if m.lower() in ("leadership", "communication", "agile")][:2] or ["Cross-Functional Collaboration"],
+            "tools": matched[3:6] if len(matched) > 3 else ["Docker", "Git"]
+        },
+        "missing_keywords": {
+            "hard_skills": missing[:2] if missing else ["Kubernetes"],
+            "soft_skills": ["Stakeholder Management"],
+            "tools": missing[2:4] if len(missing) > 2 else ["Prometheus", "Grafana"]
+        },
         "edit_suggestions": [
             f"Highlight practical project experience incorporating {missing[0] if missing else 'specialized tools'} in your technical summary.",
             "Explicitly list all matched technologies in your Core Skills matrix.",
