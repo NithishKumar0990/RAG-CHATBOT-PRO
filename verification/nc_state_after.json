@@ -1,0 +1,28 @@
+{
+  "indexed_docs": [
+    {
+      "filename": "project_atlas_resume.pdf",
+      "chunks": 1,
+      "size": "0.9 KB",
+      "uploaded_at": "10:17 PM"
+    }
+  ],
+  "active_doc": "project_atlas_resume.pdf",
+  "history_count": 0,
+  "messages": [],
+  "config": {
+    "accepted_types": [
+      "pdf",
+      "docx",
+      "txt",
+      "csv"
+    ],
+    "max_upload_mb": 200,
+    "suggested_questions": [
+      "What are my skills?",
+      "What's missing for a Data Analyst role?",
+      "Summarize my experience",
+      "What projects should I highlight?"
+    ]
+  }
+}

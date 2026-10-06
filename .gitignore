@@ -1,0 +1,40 @@
+# Secrets & Environment
+.env
+.env.*
+!.env.example
+
+# Python environment & bytecode
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Testing & caching
+.pytest_cache/
+.cache/
+.mypy_cache/
+.ruff_cache/
+
+# Streamlit / local caches (web app is in-memory)
+*.pkl
+*.pickle
+*.log
+chroma_db/
+.chroma/
+**/chroma.sqlite3
+faiss_index/
+vectorstore/
+persist/
+uploads/
+uploaded_files/
+temp/
+tmp/
+.streamlit/*
+!.streamlit/config.toml
+!.streamlit/secrets.toml
+!.streamlit/secrets.toml.example
+
+# Local scratch / test logs
+scratch/

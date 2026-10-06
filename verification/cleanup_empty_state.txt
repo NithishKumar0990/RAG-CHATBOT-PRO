@@ -1,0 +1,39 @@
+=== STEP 5: PROVE THE WEB APP STARTS EMPTY ===
+Starting server: .\.venv\Scripts\python.exe -m uvicorn server:app --port 8000
+Waiting for server to become responsive...
+Server is running on http://localhost:8000
+GET http://localhost:8000/api/health -> HTTP 200
+Response: {"ok":true}
+GET http://localhost:8000/api/state (new client) -> HTTP 200
+State Response: {
+  "indexed_docs": [],
+  "active_doc": null,
+  "history_count": 0,
+  "messages": [],
+  "config": {
+    "accepted_types": [
+      "pdf",
+      "docx",
+      "txt",
+      "csv"
+    ],
+    "max_upload_mb": 200,
+    "suggested_questions": [
+      "What are my skills?",
+      "What's missing for a Data Analyst role?",
+      "Summarize my experience",
+      "What projects should I highlight?"
+    ]
+  }
+}
+Verification: indexed_docs == [] -> True
+Verification: messages == [] -> True
+Verification: history_count == 0 -> True
+
+Checking disk for newly created persist/upload directories...
+Disk check matches: []
+No disk persist / upload files or folders created on disk. 100% in-memory.
+
+STEP 5 RESULT: PASS
+Stopping uvicorn server...
+Uvicorn server stopped.

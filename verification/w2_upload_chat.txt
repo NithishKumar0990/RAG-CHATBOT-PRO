@@ -1,0 +1,38 @@
+Direct pipeline chunk count: 1
+API upload response: {
+  "filename": "project_atlas_resume.pdf",
+  "chunks": 1,
+  "indexed_docs": [
+    {
+      "filename": "project_atlas_resume.pdf",
+      "chunks": 1,
+      "size": "0.9 KB",
+      "uploaded_at": "11:29 AM"
+    }
+  ],
+  "active_doc": "project_atlas_resume.pdf"
+}
+Re-upload response: {
+  "filename": "project_atlas_resume.pdf",
+  "chunks": 1,
+  "indexed_docs": [
+    {
+      "filename": "project_atlas_resume.pdf",
+      "chunks": 1,
+      "size": "0.9 KB",
+      "uploaded_at": "11:29 AM"
+    }
+  ],
+  "active_doc": "project_atlas_resume.pdf"
+}
+Chat answer: Project Atlas is a data-platform migration that took 8 months to complete successfully.
+Sources count: 1
+Sources detail: [
+  {
+    "origin": "uploaded",
+    "content": "John Doe - Senior Software Engineer. Led Project Atlas, a data-platform migration that took 8 months to complete successfully. Skills: Python, Distributed Systems, Vector Search, Cloud Infrastructure, Docker, Kubernetes. Experience: 2018 - Present leading backend migrations and improving system reliability.",
+    "score": 0.6385247111320496,
+    "source": "project_atlas_resume.pdf",
+    "chunk": 0
+  }
+]

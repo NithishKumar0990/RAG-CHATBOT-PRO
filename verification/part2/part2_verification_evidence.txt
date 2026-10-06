@@ -1,0 +1,8 @@
+Criterion 1 PASS: /api/health returns {ok:true}, / serves HTML, session_id cookie has HttpOnly, SameSite=Lax, Path=/.
+Criterion 2 PASS: Uploaded project_atlas_resume.pdf. Chunk count (1) matches pipeline direct indexing count exactly.
+Criterion 3 PASS: SSE yielded 91 token events and done event. Concatenated tokens match full_answer byte-for-byte.
+Criterion 4 PASS: Greeting, fallback, and NO_DOC_MSG match pipeline standards.
+Criterion 5 PASS: Multi-turn history rewrites follow-up queries and resets cleanly on /api/new_chat.
+Criterion 6 PASS: Full session isolation verified. Client A has zero access/leakage to Client B's canary document and vectors.
+Criterion 7 PASS: Resume Audit, Interview Questions, and JD Matcher conform to API_CONTRACT.md; caching operates seamlessly.
+Criterion 8 PASS: Zero logic duplication verified and test_drift AST assertion passed.

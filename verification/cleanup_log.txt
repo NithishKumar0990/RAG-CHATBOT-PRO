@@ -1,0 +1,40 @@
+KEPT    | x:\Rag_Chatbot_Pro\rag_pipeline.py | PROTECTED: Core RAG pipeline module
+KEPT    | x:\Rag_Chatbot_Pro\resume_analyzer.py | PROTECTED: Core resume analyzer module
+KEPT    | x:\Rag_Chatbot_Pro\document_parser.py | PROTECTED: Core document parser module
+KEPT    | x:\Rag_Chatbot_Pro\.env | PROTECTED: Environment variables
+KEPT    | x:\Rag_Chatbot_Pro\server.py | PROTECTED: FastAPI server application
+KEPT    | x:\Rag_Chatbot_Pro\web_adapters.py | PROTECTED: Web session adapters
+KEPT    | x:\Rag_Chatbot_Pro\static | PROTECTED: Frontend UI static assets
+KEPT    | x:\Rag_Chatbot_Pro\tests | PROTECTED: Test suite and fixtures
+KEPT    | x:\Rag_Chatbot_Pro\.venv | PROTECTED: Python virtual environment
+KEPT    | x:\Rag_Chatbot_Pro\sample_resume.txt | PROTECTED: Sample resume document
+KEPT    | x:\Rag_Chatbot_Pro\README.md | PROTECTED: Project documentation
+KEPT    | x:\Rag_Chatbot_Pro\requirements.txt | PROTECTED: Python package requirements
+KEPT    | C:\Users\nithi\.cache\huggingface | PROTECTED: Global HuggingFace model cache
+DELETED | x:\Rag_Chatbot_Pro\__pycache__ | 163799 | BYTECODE
+DELETED | x:\Rag_Chatbot_Pro\tests\__pycache__ | 88410 | BYTECODE
+DELETED | x:\Rag_Chatbot_Pro\ui\__pycache__ | 18927 | BYTECODE
+DELETED | x:\Rag_Chatbot_Pro\.pytest_cache | 590 | BYTECODE
+DELETED | X:\Rag_Chatbot_Pro\scratch\edge_audit | 52936601 | UPLOAD_DISK
+DELETED | X:\Rag_Chatbot_Pro\scratch\edge_baseline_prof | 65719745 | UPLOAD_DISK
+DELETED | X:\Rag_Chatbot_Pro\scratch\edge_diag | 50105113 | UPLOAD_DISK
+DELETED | X:\Rag_Chatbot_Pro\scratch\edge_fresh_sess | 60720405 | UPLOAD_DISK
+DELETED | X:\Rag_Chatbot_Pro\scratch\edge_input_audit | 52708713 | UPLOAD_DISK
+DELETED | X:\Rag_Chatbot_Pro\scratch\edge_i_test | 60687206 | UPLOAD_DISK
+DELETED | X:\Rag_Chatbot_Pro\scratch\edge_n1_n5 | 64917849 | UPLOAD_DISK
+DELETED | X:\Rag_Chatbot_Pro\scratch\edge_p3 | 45208763 | UPLOAD_DISK
+DELETED | X:\Rag_Chatbot_Pro\scratch\edge_profile | 24008497 | UPLOAD_DISK
+DELETED | X:\Rag_Chatbot_Pro\scratch\edge_profile2 | 18952267 | UPLOAD_DISK
+DELETED | X:\Rag_Chatbot_Pro\scratch\edge_profile_test | 24039613 | UPLOAD_DISK
+DELETED | X:\Rag_Chatbot_Pro\scratch\edge_test_nc | 30517813 | UPLOAD_DISK
+DELETED | X:\Rag_Chatbot_Pro\scratch\edge_verify_flow | 47129221 | UPLOAD_DISK
+DELETED | X:\Rag_Chatbot_Pro\scratch\edge_verify_full | 83688190 | UPLOAD_DISK
+DELETED | X:\Rag_Chatbot_Pro\scratch\edge_verify_profile | 24172290 | UPLOAD_DISK
+DELETED | X:\Rag_Chatbot_Pro\scratch\edge_verify_profile2 | 18929528 | UPLOAD_DISK
+DELETED | X:\Rag_Chatbot_Pro\scratch\edge_verify_s3 | 61256162 | UPLOAD_DISK
+DELETED | X:\Rag_Chatbot_Pro\scratch\edge_verify_u | 60757389 | UPLOAD_DISK
+DELETED | X:\Rag_Chatbot_Pro\scratch\edge_v_test | 60690928 | UPLOAD_DISK
+DELETED | X:\Rag_Chatbot_Pro\scratch\edge_w1 | 24175857 | UPLOAD_DISK
+DELETED | X:\Rag_Chatbot_Pro\scratch\edge_w3 | 22176199 | UPLOAD_DISK
+DELETED | C:\Users\nithi\.streamlit\credentials.toml | 49 | STREAMLIT_CACHE
+DELETED | C:\Users\nithi\.streamlit\machine_id_v4 | 36 | STREAMLIT_CACHE

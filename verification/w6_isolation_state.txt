@@ -1,0 +1,11 @@
+Client A uploaded canary_resume.pdf successfully
+Cache-Control header verified on /api/state: no-store, no-cache, must-revalidate
+Cookie flags verified: session_id=5dad241c6e434516bcb1caed97b74c15; HttpOnly; Max-Age=7200; Path=/; SameSite=lax
+Client B state is completely empty — no leak from Client A
+Client B cannot retrieve canary token — zero cross-session leakage!
+Client B DELETE of Client A's doc returned 404 Forbidden/Not Found as required
+Client A state remains intact after Client B actions
+Server rejected forged cookie and issued a fresh cryptographically random ID
+Concurrent Stream A response: The canary token is ZEBRA-CANARY-7731.
+Concurrent Stream B response: Project Atlas was a data-platform migration that took 8 months to complete successfully.
+Concurrent streams completed without cross-contamination!

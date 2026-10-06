@@ -1,0 +1,64 @@
+{
+  "questions": [
+    {
+      "category": "Technical",
+      "question": "What is the primary data structure used in Python for data manipulation and analysis?",
+      "what_is_tested": "Understanding of Python data structures and their applications.",
+      "ideal_answer_outline": "Pandas DataFrames, NumPy arrays, and other relevant data structures."
+    },
+    {
+      "category": "Technical",
+      "question": "How does the Random Forest algorithm handle missing values in the Customer Churn Prediction project?",
+      "what_is_tested": "Understanding of Random Forest algorithm and handling missing values.",
+      "ideal_answer_outline": "Imputation techniques, feature engineering, and model selection."
+    },
+    {
+      "category": "Technical",
+      "question": "What is the purpose of using Tableau for data visualization in the Customer Churn Prediction project?",
+      "what_is_tested": "Understanding of data visualization tools and their applications.",
+      "ideal_answer_outline": "Effective communication of insights, storytelling, and exploratory data analysis."
+    },
+    {
+      "category": "Project/Experience-based",
+      "question": "Can you walk me through the process of automating KPI reporting at TE Connectivity?",
+      "what_is_tested": "Understanding of project experience and automation techniques.",
+      "ideal_answer_outline": "Tools used, data sources, and reporting frequency."
+    },
+    {
+      "category": "Project/Experience-based",
+      "question": "What were the key challenges you faced while analyzing the sales pipeline at TE Connectivity?",
+      "what_is_tested": "Understanding of project experience and problem-solving skills.",
+      "ideal_answer_outline": "Data quality issues, stakeholder expectations, and analytical complexity."
+    },
+    {
+      "category": "Behavioral",
+      "question": "Can you describe a situation where you had to communicate complex analytical insights to a non-technical stakeholder?",
+      "what_is_tested": "Understanding of communication skills and stakeholder management.",
+      "ideal_answer_outline": "Storytelling techniques, data visualization, and presentation skills."
+    },
+    {
+      "category": "Behavioral",
+      "question": "How do you handle conflicting priorities and tight deadlines in a data analysis project?",
+      "what_is_tested": "Understanding of time management and prioritization skills.",
+      "ideal_answer_outline": "Task prioritization, delegation, and effective communication with stakeholders."
+    },
+    {
+      "category": "Behavioral",
+      "question": "Can you tell me about a time when you had to work with a cross-functional team to deliver a data-driven project?",
+      "what_is_tested": "Understanding of teamwork and collaboration skills.",
+      "ideal_answer_outline": "Roles and responsibilities, communication strategies, and conflict resolution."
+    },
+    {
+      "category": "Behavioral",
+      "question": "How do you stay up-to-date with the latest developments in machine learning and data science?",
+      "what_is_tested": "Understanding of professional development and lifelong learning.",
+      "ideal_answer_outline": "Online courses, conferences, and industry publications."
+    },
+    {
+      "category": "Behavioral",
+      "question": "Can you describe a situation where you had to adapt to a new data analysis tool or technology?",
+      "what_is_tested": "Understanding of adaptability and technical skills.",
+      "ideal_answer_outline": "Learning curve, support resources, and troubleshooting strategies."
+    }
+  ]
+}

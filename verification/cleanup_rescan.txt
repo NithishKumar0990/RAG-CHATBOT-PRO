@@ -1,0 +1,73 @@
+=== POST-CLEANUP RESCAN REPORT ===
+Checking project tree and Windows user directories for leftover persistence artifacts.
+
+--- 1. Project Root Directory Targets ---
+CLEAN: __pycache__ does not exist.
+CLEAN: .pytest_cache does not exist.
+CLEAN: .mypy_cache does not exist.
+CLEAN: .ruff_cache does not exist.
+CLEAN: .cache does not exist.
+CLEAN: .streamlit does not exist.
+CLEAN: chroma_db does not exist.
+CLEAN: chroma does not exist.
+CLEAN: .chroma does not exist.
+CLEAN: chromadb does not exist.
+CLEAN: faiss_index does not exist.
+CLEAN: faiss_store does not exist.
+CLEAN: faiss does not exist.
+CLEAN: vectorstore does not exist.
+CLEAN: vector_store does not exist.
+CLEAN: vectordb does not exist.
+CLEAN: embeddings/index does not exist.
+CLEAN: persist does not exist.
+CLEAN: db does not exist.
+CLEAN: storage/index does not exist.
+CLEAN: indexes does not exist.
+CLEAN: index does not exist.
+CLEAN: uploads does not exist.
+CLEAN: uploaded does not exist.
+CLEAN: uploaded_files does not exist.
+CLEAN: uploaded_docs does not exist.
+CLEAN: temp does not exist.
+CLEAN: tmp does not exist.
+CLEAN: .tmp does not exist.
+CLEAN: tmp_uploads does not exist.
+CLEAN: temp_uploads does not exist.
+CLEAN: logs does not exist.
+
+--- 2. Project Nested __pycache__ & *.pyc ---
+Non-venv __pycache__ count: 0
+Non-venv *.pyc count: 0
+
+--- 3. Project Stray Files (*.tmp, *.pkl, *.db, *.log, session*) ---
+Pattern *.tmp: 0 matches
+Pattern *.pkl: 0 matches
+Pattern *.pickle: 0 matches
+Pattern *.joblib: 0 matches
+Pattern session.json: 0 matches
+Pattern session_state.json: 0 matches
+Pattern session.pkl: 0 matches
+Pattern *.sqlite: 0 matches
+Pattern *.sqlite3: 0 matches
+Pattern streamlit.log: 0 matches
+Pattern uvicorn.log: 0 matches
+
+--- 4. User-Level Streamlit Directories ---
+CLEAN: credentials.toml does not exist.
+CLEAN: machine_id* does not exist.
+CLEAN: cache does not exist.
+CLEAN: metrics.toml does not exist.
+CLEAN: config.toml does not exist.
+CLEAN: localappdata_streamlit does not exist.
+CLEAN: appdata_streamlit does not exist.
+CLEAN: temp_streamlit does not exist.
+CLEAN: localappdata_temp_streamlit does not exist.
+TEMP streamlit files: 0
+TEMP upload pdfs: 0
+
+=== SUMMARY ===
+STREAMLIT_CACHE hits: 0
+VECTOR_DISK hits: 0
+UPLOAD_DISK hits: 0
+BYTECODE hits: 0
+All scans clean.

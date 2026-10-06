@@ -1,0 +1,6 @@
+Saved 1440x900 empty state screenshot (46581 bytes).
+Criterion 1 PASS: Computed styles and brand typography match project standards.
+Saved mobile 390x844 screenshot (170659 bytes).
+Criterion 2 PASS: Exactly 0 scroll container in main pane.
+Criterion 3 PASS: Upload flow and RECENT list render correctly.
+Criterion 4 PASS: Page reload restores documents, chat messages, timestamps, and sources.

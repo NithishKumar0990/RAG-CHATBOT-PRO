@@ -1,0 +1,75 @@
+================================================================================
+FRESH NEW CHAT & THREAD ISOLATION: 10-POINT VERIFICATION SUITE
+================================================================================
+Session 1 ID: fcfd444362c744e3b29f6a980278dc19
+
+--- TEST 1: Upload PDF A and ask question about A ---
+Upload A Response: active_doc=canary_resume.pdf, chunks=1
+Chat A Answer: The canary identifier is ZEBRA-CANARY-7731....
+Chat A Sources: [{'origin': 'uploaded', 'content': 'Alice Smith - Security Architect and Confidential Systems Specialist. Canary identifier token: ZEBRA-CANARY-7731. Skills: Cryptography, Identity Access Management, Zero-Trust Architecture, Python, Linux. Led confidential security audits across multiple enterprise clients from 2019 to Present.', 'score': 0.46486401557922363, 'source': 'canary_resume.pdf', 'chunk': 0}]
+>>> TEST 1: PASS
+
+--- TEST 2: Click New Chat and inspect /api/state and vectorstore ---
+New Chat ID: 8c906d31
+/api/state after New Chat: active_chat_id=8c906d31, active_doc=None, indexed_docs=[], history_count=0
+Vectorstore remaining chunks: 0
+sess1 active_doc: None, topics: []
+rag_pipeline._doc_topics: []
+>>> TEST 2: PASS
+
+--- TEST 3: Ask question in new thread before uploading ---
+Pre-upload Answer: Please upload a document (PDF, DOCX, TXT, or CSV) above to start chatting.
+>>> TEST 3: PASS
+
+--- TEST 4: Upload PDF B and ask about Canary A ---
+Upload B Response: active_doc=project_atlas_resume.pdf, chunks=1
+Chat 2 Ask A Answer: I couldn't find that in **project_atlas_resume.pdf**. Here's what I **can** answer about this document:
+
+• John Doe - Senior Software Engineer. Led Project Atlas, a data-platform migration that too...
+
+Try one of these, or upload a different document.
+>>> TEST 4: PASS
+
+--- TEST 5: Ask about Canary B (Project Atlas) in Chat 2 ---
+Chat 2 Ask B Answer: Project Atlas was a data-platform migration that took 8 months to complete successfully, led by John Doe, a Senior Softw...
+Chat 2 Ask B Sources: [{'origin': 'uploaded', 'content': 'John Doe - Senior Software Engineer. Led Project Atlas, a data-platform migration that took 8 months to complete successfully. Skills: Python, Distributed Systems, Vector Search, Cloud Infrastructure, Docker, Kubernetes. Experience: 2018 - Present leading backend migrations and improving system reliability.', 'score': 0.7766623497009277, 'source': 'project_atlas_resume.pdf', 'chunk': 0}]
+>>> TEST 5: PASS
+
+--- TEST 6: Verify query rewriting in new chat receives no prior chat messages ---
+Chat 1 message count: 2
+Chat 2 message count: 4
+>>> TEST 6: PASS
+
+--- TEST 7: Switch to Chat 1 and verify it does NOT use Chat 2's PDF ---
+Activate Chat 1 Response: active_doc=None, indexed_docs=[]
+Chat 1 Ask B Answer: Please upload a document (PDF, DOCX, TXT, or CSV) above to start chatting.
+>>> TEST 7: PASS
+
+--- TEST 8: Multi-session isolation check ---
+Session 2 ID: 95cb8e80b99f4f6996a772a7131f2803
+Session 2 state: active_doc=None, indexed_docs=[], chats=1
+>>> TEST 8: PASS
+
+--- TEST 9: State consistency between endpoints ---
+Chat 2 /api/state: active_doc=project_atlas_resume.pdf, indexed_docs=[{'filename': 'project_atlas_resume.pdf', 'chunks': 1, 'size': '0.9 KB', 'uploaded_at': '12:17 PM'}]
+Chat 1 /api/state: active_doc=None, indexed_docs=[]
+>>> TEST 9: PASS
+
+--- TEST 10: Existing upload/chat/source functionality on active thread ---
+Follow-up Answer: John Doe led the migration....
+Follow-up Sources: [{'origin': 'uploaded', 'content': 'John Doe - Senior Software Engineer. Led Project Atlas, a data-platform migration that took 8 months to complete successfully. Skills: Python, Distributed Systems, Vector Search, Cloud Infrastructure, Docker, Kubernetes. Experience: 2018 - Present leading backend migrations and improving system reliability.', 'score': 0.643126368522644, 'source': 'project_atlas_resume.pdf', 'chunk': 0}]
+>>> TEST 10: PASS
+
+================================================================================
+ALL 10 TESTS COMPLETED SUCCESSFULLY!
+================================================================================
+  [PASS] Test 1: Upload A & Chat with Source
+  [PASS] Test 2: New Chat Clears Vectorstore & State
+  [PASS] Test 3: No-document Guard Pre-Upload
+  [PASS] Test 4: Canary A Not Retrievable in Chat 2
+  [PASS] Test 5: Canary B Retrievable with Sources
+  [PASS] Test 6: Query Rewriting Thread Isolation
+  [PASS] Test 7: Chat 1 Does Not Inherit Chat 2 PDF
+  [PASS] Test 8: Cross-session Isolation
+  [PASS] Test 9: State Consistency with /api/state
+  [PASS] Test 10: Normal Upload/Chat/Source Functionality

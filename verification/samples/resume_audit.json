@@ -1,0 +1,29 @@
+{
+  "overall_score": 85,
+  "axis_scores": {
+    "formatting": 80,
+    "ats_friendliness": 85,
+    "action_verbs": 90,
+    "quantified_achievements": 80,
+    "section_completeness": 90
+  },
+  "mistakes_and_missing": [
+    "Mistake item 1: Contact information is not formatted consistently (e.g., LinkedIn URL is not in the format of linkedin.com/in/nithish).",
+    "Mistake item 2: The resume lacks a clear and concise career objective or professional summary.",
+    "Mistake item 3: The 'CORE SKILLS' section could be more specific and detailed, with clear explanations of each skill's application and relevance to the job."
+  ],
+  "bullet_rewrites": [
+    {
+      "weak_original": "Led cross-functional engineering teams to reduce latency by 45% and scaled vector search engines across millions of embedding vectors.",
+      "strong_version": "Reduced latency by 45% through optimized vector search engine scaling, enabling efficient processing of millions of embedding vectors."
+    },
+    {
+      "weak_original": "Architected enterprise Retrieval-Augmented Generation (RAG) platform handling 2M+ daily queries with 99.9% uptime.",
+      "strong_version": "Designed and implemented a high-availability RAG platform, achieving 99.9% uptime and handling 2 million+ daily queries."
+    },
+    {
+      "weak_original": "Mentored 6 junior engineers on LLM safety, evals, and system observability.",
+      "strong_version": "Mentored 6 junior engineers, providing guidance on LLM safety, evaluation metrics, and system observability best practices."
+    }
+  ]
+}

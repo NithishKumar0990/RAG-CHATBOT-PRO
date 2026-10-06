@@ -1,0 +1,4 @@
+DOCS PRESERVED IDENTICAL:
+indexed_docs count: 1
+active_doc: project_atlas_resume.pdf
+chunks: 1

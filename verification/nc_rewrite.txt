@@ -1,0 +1,9 @@
+NEW CHAT THREAD (Isolated):
+Question: "How long did it take?" (Active Thread History: 0 messages)
+Rewriter received empty history. Query stayed original: "How long did it take?"
+Assistant answer: It took 8 months to complete Project Atlas successfully....
+
+CONTROL SESSION (Without New Chat):
+Question 1: "What is Project Atlas?"
+Question 2: "How long did it take?" (History: 2 messages)
+Rewriter resolved question using multi-turn history.

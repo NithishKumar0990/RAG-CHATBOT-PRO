@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Résumé IQ — Your resume, understood.</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="app-container">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar" aria-label="Sidebar Navigation">
+      <div class="sidebar-header">
+        <div class="brand-wrap">
+          <span class="brand-icon">📄</span>
+          <span class="brand-title">Résumé IQ</span>
+        </div>
+        <div class="brand-tagline">Your resume, understood.</div>
+      </div>
+
+      <div class="sidebar-actions">
+        <button class="btn-new-chat" id="new-chat-btn" aria-label="Start New Chat">
+          <span>+</span>
+          <span>New chat</span>
+        </button>
+      </div>
+
+      <!-- Mode Segmented Control -->
+      <div class="mode-segmented" role="tablist" aria-label="App View Mode">
+        <button class="mode-btn active" id="btnModeChat" role="tab" aria-selected="true">Chat</button>
+        <button class="mode-btn" id="btnModeAnalyze" role="tab" aria-selected="false">Analyze</button>
+      </div>
+
+      <!-- CHATS Section -->
+      <div class="chats-header">Chats</div>
+      <div class="chats-list" id="chatsList" role="list">
+        <!-- Dynamically rendered chat threads -->
+      </div>
+
+      <!-- RECENT Section -->
+      <div class="recent-header">Recent</div>
+      <div class="recent-list" id="recentList" role="list">
+        <!-- Dynamically rendered documents -->
+      </div>
+
+      <div class="sidebar-footer">
+        <span>Session Isolated</span>
+        <span id="sessionStatus">Connected</span>
+      </div>
+    </aside>
+
+    <!-- MAIN PANE (EXACTLY ONE SCROLL CONTAINER) -->
+    <main class="main-wrapper" id="mainWrapper">
+      <div class="main-scroll-container" id="mainScrollContainer">
+        <div class="content-inner">
+          <!-- Top Navigation -->
+          <div class="top-nav">
+            <button class="mobile-menu-btn" id="btnMobileMenu" aria-label="Toggle Navigation">☰</button>
+            <div class="doc-pill" id="activeDocPill" style="display: none;">
+              <span class="doc-pill-dot"></span>
+              <span id="activeDocName">Active Document</span>
+              <button class="btn-del-doc" id="btnRemoveActiveDoc" title="Remove document" aria-label="Remove active document" style="opacity: 1; margin-left: 4px; padding: 0 4px; font-size: 11px;">✕</button>
+            </div>
+          </div>
+
+          <!-- VIEW 1: CHAT MODE -->
+          <div id="chatView" style="display: flex; flex-direction: column; width: 100%;">
+            <!-- Empty State / Hero -->
+            <div class="chat-empty-hero" id="emptyHero">
+              <div class="hero-logo-box">◆</div>
+              <h1 class="hero-title">What would you like to know about your résumé?</h1>
+              <p class="hero-subtitle">
+                Upload a document to analyze ATS score, generate interview questions, or ask specific questions.
+              </p>
+              <div class="suggested-chips-grid">
+                <button class="chip-btn" data-query="What are my skills?">
+                  What are my skills?
+                </button>
+                <button class="chip-btn" data-query="What's missing for a Data Analyst role?">
+                  What's missing for a Data Analyst role?
+                </button>
+                <button class="chip-btn" data-query="Summarize my experience">
+                  Summarize my experience
+                </button>
+                <button class="chip-btn" data-query="What projects should I highlight?">
+                  What projects should I highlight?
+                </button>
+              </div>
+            </div>
+
+            <!-- Messages List -->
+            <div class="chat-messages-wrap" id="chatMessages" aria-live="polite">
+              <!-- Dynamically populated message bubbles -->
+            </div>
+          </div>
+
+          <!-- VIEW 2: ANALYZE MODE -->
+          <div class="analyze-wrapper" id="analyzeView">
+            <div class="analyze-header">
+              <h1 class="analyze-title">Your Résumé, Analyzed</h1>
+              <div class="analyze-gradient-bar"></div>
+              <div class="riq-micro" id="analyzeDocInfo">
+                Active: <strong id="analyzeActiveDoc">No document active</strong>
+              </div>
+            </div>
+
+            <div class="analyze-tabs-bar" role="tablist">
+              <button class="tab-btn active" data-tab="tabOverview" role="tab">📌 Overview</button>
+              <button class="tab-btn" data-tab="tabAudit" role="tab">📊 Resume Audit</button>
+              <button class="tab-btn" data-tab="tabQuestions" role="tab">🎯 Interview Qs</button>
+              <button class="tab-btn" data-tab="tabJd" role="tab">💼 JD Match</button>
+            </div>
+
+            <!-- TAB 1: OVERVIEW -->
+            <div class="tab-panel active" id="tabOverview">
+              <div class="overview-grid">
+                <div class="riq-score-card">
+                  <div id="overviewGauge"></div>
+                  <div style="font-family:var(--font-serif); font-weight:600; font-size:18px; margin-top:12px;">
+                    Overall Résumé Score
+                  </div>
+                  <div class="riq-micro" style="margin-top:4px;">
+                    Audited across 5 ATS quality axes
+                  </div>
+                </div>
+
+                <div class="stats-tiles-row">
+                  <div class="riq-stat-tile">
+                    <div class="stat-icon">🧩</div>
+                    <div class="stat-num" id="statSkills">—</div>
+                    <div class="stat-label">Skills Found</div>
+                  </div>
+                  <div class="riq-stat-tile">
+                    <div class="stat-icon">🕐</div>
+                    <div class="stat-num" id="statExp">—</div>
+                    <div class="stat-label">Estimated Experience</div>
+                  </div>
+                  <div class="riq-stat-tile">
+                    <div class="stat-icon">🔑</div>
+                    <div class="stat-num" id="statKeyword">—</div>
+                    <div class="stat-label">Top Missing Keyword</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB 2: RESUME AUDIT -->
+            <div class="tab-panel" id="tabAudit">
+              <div id="auditAxisContainer"></div>
+              <h3 style="margin: 20px 0 10px 0; font-size: 16px;">Mistakes & Missing Sections</h3>
+              <div id="auditMistakesContainer"></div>
+              <h3 style="margin: 24px 0 10px 0; font-size: 16px;">Bullet Rewrites</h3>
+              <div id="auditRewritesContainer"></div>
+            </div>
+
+            <!-- TAB 3: INTERVIEW QUESTIONS -->
+            <div class="tab-panel" id="tabQuestions">
+              <div style="display:flex; gap:8px; margin-bottom:16px;" id="iqFilterBar">
+                <button class="chip-btn active" data-cat="ALL" style="padding:6px 12px; font-size:12px;">All</button>
+                <button class="chip-btn" data-cat="Technical" style="padding:6px 12px; font-size:12px;">Technical</button>
+                <button class="chip-btn" data-cat="Project/Experience-based" style="padding:6px 12px; font-size:12px;">Project</button>
+                <button class="chip-btn" data-cat="Behavioral" style="padding:6px 12px; font-size:12px;">Behavioral</button>
+              </div>
+              <div id="iqListContainer"></div>
+            </div>
+
+            <!-- TAB 4: JD MATCH -->
+            <div class="tab-panel" id="tabJd">
+              <div style="background:var(--bg-surface); border:1px solid var(--border); border-radius:var(--radius-md); padding:16px; margin-bottom:20px;">
+                <label style="font-weight:600; font-size:13px; display:block; margin-bottom:6px;">Paste Job Description or Requirements:</label>
+                <textarea id="jdInputText" rows="4" style="width:100%; border:1px solid var(--border-strong); border-radius:var(--radius-xs); padding:8px; font-family:var(--font-sans); font-size:13px; resize:vertical;" placeholder="Paste job description text here..."></textarea>
+                <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+                  <button class="btn-new-chat" id="btnRunJdMatch" style="width:auto; padding:8px 18px;">Match Against Resume</button>
+                </div>
+              </div>
+              <div id="jdResultWrap" style="display:none;">
+                <div style="display:flex; align-items:center; gap:20px; margin-bottom:20px;">
+                  <div id="jdGaugeWrap" style="width:120px; height:120px;"></div>
+                  <div>
+                    <h3 style="margin:0 0 4px 0; font-size:18px;">Match Score</h3>
+                    <p class="riq-micro" style="margin:0;">Semantic alignment between active resume and job requirements</p>
+                  </div>
+                </div>
+                <h4 style="margin:16px 0 6px 0; font-size:13.5px;">Matched Keywords</h4>
+                <div class="chips-wrap" id="jdMatchedChips"></div>
+                <h4 style="margin:16px 0 6px 0; font-size:13.5px;">Missing Keywords</h4>
+                <div class="chips-wrap" id="jdMissingChips"></div>
+                <h4 style="margin:16px 0 6px 0; font-size:13.5px;">Actionable Edit Suggestions</h4>
+                <div id="jdSuggestionsList"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Floating Scroll-to-Bottom button -->
+      <button class="btn-scroll-down" id="btnScrollDown" aria-label="Scroll to bottom">
+        ↓ New messages
+      </button>
+
+      <!-- BOTTOM CHAT INPUT DOCK (ONE PILL CONTAINER) -->
+      <div class="chat-dock-container" id="chatDockContainer">
+        <div class="chat-input-pill" id="chatInputPill">
+          <button class="btn-attach" id="btnAttach" title="Attach Document" aria-label="Attach Document">+</button>
+          <input type="file" id="fileUploadInput" accept=".pdf,.docx,.txt,.csv" style="display:none;" />
+          <textarea
+            class="chat-textarea"
+            id="chatInput"
+            placeholder="Ask anything about your résumé..."
+            rows="1"
+            aria-label="Ask anything about your résumé"
+          ></textarea>
+          <button class="btn-send" id="btnSend" title="Send message" aria-label="Send message" disabled>↑</button>
+        </div>
+        <div class="riq-disclaimer">
+          Résumé IQ can make mistakes. Verify key facts against your original document.
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Vanilla App Script -->
+  <script src="/static/app.js"></script>
+</body>
+</html>

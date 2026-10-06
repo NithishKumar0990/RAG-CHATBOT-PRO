@@ -1,0 +1,24 @@
+Nithish Kumar
+Software Engineer & AI Specialist
+Email: nithish@example.com | Phone: (555) 019-2834 | LinkedIn: linkedin.com/in/nithish
+
+SUMMARY:
+Results-driven software engineer with 5+ years of experience specializing in building production-ready RAG architectures, full-stack AI applications, and distributed backend systems. Led cross-functional engineering teams to reduce latency by 45% and scaled vector search engines across millions of embedding vectors.
+
+CORE SKILLS:
+- Languages: Python, TypeScript, Go, SQL
+- AI / ML: LangChain, ChromaDB, HuggingFace, OpenAI, Vector Search, Semantic Routing
+- Web & Cloud: Streamlit, FastAPI, React, Docker, Kubernetes, AWS, PostgreSQL
+
+EXPERIENCE:
+Senior AI Platform Engineer — Apex Tech (2022 - Present)
+- Architected enterprise Retrieval-Augmented Generation (RAG) platform handling 2M+ daily queries with 99.9% uptime.
+- Optimized hybrid retrieval pipeline combining dense vector embeddings and BM25 keywords, increasing retrieval precision by 38%.
+- Mentored 6 junior engineers on LLM safety, evals, and system observability.
+
+Software Engineer — CloudScale Systems (2019 - 2022)
+- Built real-time analytics streaming pipelines using Kafka, reducing event processing lag from 12s to under 400ms.
+- Designed REST and GraphQL APIs for client dashboard used by 50,000+ active users.
+
+EDUCATION:
+B.S. in Computer Science — State University (2015 - 2019)

@@ -1,0 +1,2 @@
+No uncaught exceptions in console.
+POST /api/new_chat returned 200 OK.

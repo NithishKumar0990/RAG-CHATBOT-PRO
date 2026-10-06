@@ -1,0 +1,27 @@
+{
+  "match_percentage": 92,
+  "matched_keywords": [
+    "Python",
+    "AI/ML",
+    "RAG architectures",
+    "LangChain",
+    "Vector databases",
+    "ChromaDB",
+    "FastAPI",
+    "Docker",
+    "AWS",
+    "Kubernetes"
+  ],
+  "missing_keywords": [
+    "Go",
+    "SQL",
+    "Streamlit",
+    "React",
+    "PostgreSQL"
+  ],
+  "edit_suggestions": [
+    "Consider adding experience with GraphQL APIs to match the JD requirement.",
+    "Highlight experience with Vector Search and Semantic Routing to match the JD requirement.",
+    "Emphasize the ability to design and implement production-ready RAG architectures to match the JD requirement."
+  ]
+}
